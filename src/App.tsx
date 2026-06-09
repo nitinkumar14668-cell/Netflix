@@ -9,6 +9,8 @@ import {
 } from "lucide-react";
 import Navbar from "./components/Navbar";
 import VideoPlayer from "./components/VideoPlayer";
+import MovieCardSkeleton from "./components/MovieCardSkeleton";
+import HeroBannerSkeleton from "./components/HeroBannerSkeleton";
 import { Movie, DownloadTask, LanguageCode, TRANSLATIONS } from "./types";
 
 export default function App() {
@@ -435,7 +437,9 @@ export default function App() {
         {tab === "home" && !offlineMode && (
           <div className="animate-fade-in flex flex-col gap-10">
             {/* Elegant Large Banner Hero */}
-            {featuredMovie && (
+            {isSearching && !featuredMovie ? (
+              <HeroBannerSkeleton />
+            ) : featuredMovie ? (
               <section className="relative min-h-[460px] w-full flex flex-col justify-end bg-neutral-950 overflow-hidden" id="hero-banner">
                 {/* Visual dark layouts */}
                 <div className="absolute inset-0 bg-gradient-to-r from-[#0A0A0A] via-[#0A0A0A]/70 to-transparent z-10" />
@@ -459,7 +463,7 @@ export default function App() {
                   <h1 className="text-4xl md:text-6xl font-extrabold tracking-tighter leading-none text-white drop-shadow-lg">
                     {featuredMovie.title.split(":")[0]}
                     {featuredMovie.title.includes(":") && (
-                      <span className="text-red-500 block text-2xl md:text-4xl mt-1">
+                      <span className="text-red-500 block text-2xl md:text-3xl mt-1">
                         {featuredMovie.title.split(":")[1]}
                       </span>
                     )}
@@ -525,7 +529,7 @@ export default function App() {
                   </div>
                 </div>
               </section>
-            )}
+            ) : null}
 
             {/* Curated Categories Lists */}
             <div className="px-4 md:px-12 flex flex-col gap-10">
@@ -537,64 +541,70 @@ export default function App() {
                   <span>{t.trending}</span>
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {trendingMovies.map((movie) => {
-                    const isInWatchlist = watchlist.includes(movie.id);
-                    return (
-                      <div 
-                        key={movie.id} 
-                        className="group relative rounded-xl overflow-hidden border border-neutral-900 bg-neutral-950/60 hover:border-red-600/40 transition duration-300 flex flex-col text-left"
-                      >
-                        {/* Poster space */}
-                        <div className="relative aspect-[2/3] overflow-hidden bg-neutral-900">
-                          <img 
-                            src={movie.posterUrl} 
-                            alt={movie.title} 
-                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                            loading="lazy"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 gap-2">
-                            <button
-                              onClick={() => {
-                                setActiveMovie(movie);
-                                window.scrollTo({ top: 0, behavior: "smooth" });
-                              }}
-                              className="w-full bg-red-600 hover:bg-red-700 text-white text-xs font-black py-1.5 rounded flex items-center justify-center gap-1 cursor-pointer"
-                            >
-                              <Play className="w-3.5 h-3.5 fill-white" />
-                              <span>{t.playBtn}</span>
-                            </button>
-                            <button
-                              onClick={() => setSelectingQualityMovie(movie)}
-                              className="w-full bg-neutral-900/90 hover:bg-neutral-800 text-white text-xs py-1.5 rounded border border-neutral-800 flex items-center justify-center gap-1 cursor-pointer"
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                              <span>Download</span>
-                            </button>
+                  {isSearching ? (
+                    Array.from({ length: 6 }).map((_, idx) => (
+                      <MovieCardSkeleton key={idx} variant="home" />
+                    ))
+                  ) : (
+                    trendingMovies.map((movie) => {
+                      const isInWatchlist = watchlist.includes(movie.id);
+                      return (
+                        <div 
+                          key={movie.id} 
+                          className="group relative rounded-xl overflow-hidden border border-neutral-900 bg-neutral-950/60 hover:border-red-600/40 transition duration-300 flex flex-col text-left"
+                        >
+                          {/* Poster space */}
+                          <div className="relative aspect-[2/3] overflow-hidden bg-neutral-900">
+                            <img 
+                              src={movie.posterUrl} 
+                              alt={movie.title} 
+                              className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                              loading="lazy"
+                            />
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 gap-2">
+                              <button
+                                onClick={() => {
+                                  setActiveMovie(movie);
+                                  window.scrollTo({ top: 0, behavior: "smooth" });
+                                }}
+                                className="w-full bg-red-600 hover:bg-red-700 text-white text-xs font-black py-1.5 rounded flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <Play className="w-3.5 h-3.5 fill-white" />
+                                <span>{t.playBtn}</span>
+                              </button>
+                              <button
+                                onClick={() => setSelectingQualityMovie(movie)}
+                                className="w-full bg-neutral-900/90 hover:bg-neutral-800 text-white text-xs py-1.5 rounded border border-neutral-800 flex items-center justify-center gap-1 cursor-pointer"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                                <span>Download</span>
+                              </button>
+                            </div>
+                            
+                            {/* Rating badge */}
+                            <div className="absolute top-2 left-2 bg-black/80 border border-neutral-800 px-1.5 py-0.5 rounded text-[10px] text-yellow-400 font-bold flex items-center gap-0.5">
+                              <Star className="w-2.5 h-2.5 fill-yellow-400" />
+                              {movie.rating}
+                            </div>
                           </div>
-                          
-                          {/* Rating badge */}
-                          <div className="absolute top-2 left-2 bg-black/80 border border-neutral-800 px-1.5 py-0.5 rounded text-[10px] text-yellow-400 font-bold flex items-center gap-0.5">
-                            <Star className="w-2.5 h-2.5 fill-yellow-400" />
-                            {movie.rating}
-                          </div>
-                        </div>
 
-                        {/* Description Footer content */}
-                        <div className="p-3 flex flex-col flex-1 gap-1">
-                          <h4 className="text-xs md:text-sm font-bold text-white truncate">{movie.title}</h4>
-                          <div className="flex items-center justify-between text-[10px] text-neutral-400">
-                            <span>{movie.year} • {movie.duration}</span>
-                            <button 
-                              onClick={() => toggleWatchlist(movie.id, movie.title)}
-                              className="text-neutral-500 hover:text-red-500"
-                            >
-                              {isInWatchlist ? <Check className="text-green-500 w-3 h-3" /> : <Plus className="w-3 h-3" />}
-                            </button>
+                          {/* Description Footer content */}
+                          <div className="p-3 flex flex-col flex-1 gap-1">
+                            <h4 className="text-xs md:text-sm font-bold text-white truncate">{movie.title}</h4>
+                            <div className="flex items-center justify-between text-[10px] text-neutral-400">
+                              <span>{movie.year} • {movie.duration}</span>
+                              <button 
+                                onClick={() => toggleWatchlist(movie.id, movie.title)}
+                                className="text-neutral-500 hover:text-red-500"
+                              >
+                                {isInWatchlist ? <Check className="text-green-500 w-3 h-3" /> : <Plus className="w-3 h-3" />}
+                              </button>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  )}
                 </div>
               </section>
 
@@ -605,7 +615,11 @@ export default function App() {
                   <span>{t.bollywoodHits}</span>
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {bollywoodMovies.length > 0 ? (
+                  {isSearching ? (
+                    Array.from({ length: 6 }).map((_, idx) => (
+                      <MovieCardSkeleton key={idx} variant="home" />
+                    ))
+                  ) : bollywoodMovies.length > 0 ? (
                     bollywoodMovies.map((movie) => (
                       <div 
                         key={movie.id} 
@@ -664,49 +678,55 @@ export default function App() {
                   <span>{t.sciFiFantasy}</span>
                 </h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-                  {scifiMovies.map((movie) => (
-                    <div 
-                      key={movie.id} 
-                      className="group relative rounded-xl overflow-hidden border border-neutral-900 bg-neutral-950/60 hover:border-red-600/40 transition duration-300 flex flex-col text-left"
-                    >
-                      <div className="relative aspect-[2/3] overflow-hidden bg-neutral-900">
-                        <img 
-                          src={movie.posterUrl} 
-                          alt={movie.title} 
-                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
-                          loading="lazy"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 gap-2">
-                          <button
-                            onClick={() => {
-                              setActiveMovie(movie);
-                              window.scrollTo({ top: 0, behavior: "smooth" });
-                            }}
-                            className="w-full bg-red-600 hover:bg-red-700 text-white text-xs font-black py-1.5 rounded flex items-center justify-center gap-1 cursor-pointer"
-                          >
-                            <Play className="w-3.5 h-3.5 fill-white" />
-                            <span>{t.playBtn}</span>
-                          </button>
-                          <button
-                            onClick={() => setSelectingQualityMovie(movie)}
-                            className="w-full bg-neutral-900/90 hover:bg-neutral-800 text-white text-xs py-1.5 rounded border border-neutral-800 flex items-center justify-center gap-1 cursor-pointer"
-                          >
-                            <Download className="w-3.5 h-3.5" />
-                            <span>Download</span>
-                          </button>
+                  {isSearching ? (
+                    Array.from({ length: 6 }).map((_, idx) => (
+                      <MovieCardSkeleton key={idx} variant="home" />
+                    ))
+                  ) : (
+                    scifiMovies.map((movie) => (
+                      <div 
+                        key={movie.id} 
+                        className="group relative rounded-xl overflow-hidden border border-neutral-900 bg-neutral-950/60 hover:border-red-600/40 transition duration-300 flex flex-col text-left"
+                      >
+                        <div className="relative aspect-[2/3] overflow-hidden bg-neutral-900">
+                          <img 
+                            src={movie.posterUrl} 
+                            alt={movie.title} 
+                            className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                            loading="lazy"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 gap-2">
+                            <button
+                              onClick={() => {
+                                setActiveMovie(movie);
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                              }}
+                              className="w-full bg-red-600 hover:bg-red-700 text-white text-xs font-black py-1.5 rounded flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <Play className="w-3.5 h-3.5 fill-white" />
+                              <span>{t.playBtn}</span>
+                            </button>
+                            <button
+                              onClick={() => setSelectingQualityMovie(movie)}
+                              className="w-full bg-neutral-900/90 hover:bg-neutral-800 text-white text-xs py-1.5 rounded border border-neutral-800 flex items-center justify-center gap-1 cursor-pointer"
+                            >
+                              <Download className="w-3.5 h-3.5" />
+                              <span>Download</span>
+                            </button>
+                          </div>
+                          
+                          <div className="absolute top-2 left-2 bg-black/80 border border-neutral-800 px-1.5 py-0.5 rounded text-[10px] text-yellow-400 font-bold flex items-center gap-0.5">
+                            <Star className="w-2.5 h-2.5 fill-yellow-400" />
+                            {movie.rating}
+                          </div>
                         </div>
-                        
-                        <div className="absolute top-2 left-2 bg-black/80 border border-neutral-800 px-1.5 py-0.5 rounded text-[10px] text-yellow-400 font-bold flex items-center gap-0.5">
-                          <Star className="w-2.5 h-2.5 fill-yellow-400" />
-                          {movie.rating}
+                        <div className="p-3 flex flex-col flex-1 gap-1">
+                          <h4 className="text-xs md:text-sm font-bold text-white truncate">{movie.title}</h4>
+                          <span className="text-[10px] text-neutral-400">{movie.year} • {movie.duration}</span>
                         </div>
                       </div>
-                      <div className="p-3 flex flex-col flex-1 gap-1">
-                        <h4 className="text-xs md:text-sm font-bold text-white truncate">{movie.title}</h4>
-                        <span className="text-[10px] text-neutral-400">{movie.year} • {movie.duration}</span>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </section>
 
@@ -786,58 +806,64 @@ export default function App() {
 
             {/* Movie Library Cards Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-6">
-              {(results.length > 0 ? results : trendingMovies).map((movie) => (
-                <div 
-                  key={movie.id} 
-                  className="group bg-neutral-950 rounded-xl overflow-hidden border border-neutral-900 hover:border-red-600/35 transition-all text-left flex flex-col"
-                >
-                  <div className="relative aspect-[2/3] overflow-hidden bg-neutral-900">
-                    <img src={movie.posterUrl} alt={movie.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
-                    
-                    {/* Floating rating overlay */}
-                    <div className="absolute top-2.5 left-2.5 bg-black/85 border border-white/5 py-0.5 px-2 rounded-md text-[10px] text-yellow-400 font-bold flex items-center gap-0.5">
-                      <Star className="w-3 h-3 fill-yellow-400" />
-                      {movie.rating}
+              {isSearching ? (
+                Array.from({ length: 12 }).map((_, idx) => (
+                  <MovieCardSkeleton key={idx} variant="library" />
+                ))
+              ) : (
+                (results.length > 0 ? results : trendingMovies).map((movie) => (
+                  <div 
+                    key={movie.id} 
+                    className="group bg-neutral-950 rounded-xl overflow-hidden border border-neutral-900 hover:border-red-600/35 transition-all text-left flex flex-col"
+                  >
+                    <div className="relative aspect-[2/3] overflow-hidden bg-neutral-900">
+                      <img src={movie.posterUrl} alt={movie.title} className="w-full h-full object-cover group-hover:scale-105 transition duration-300" />
+                      
+                      {/* Floating rating overlay */}
+                      <div className="absolute top-2.5 left-2.5 bg-black/85 border border-white/5 py-0.5 px-2 rounded-md text-[10px] text-yellow-400 font-bold flex items-center gap-0.5">
+                        <Star className="w-3 h-3 fill-yellow-400" />
+                        {movie.rating}
+                      </div>
+
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 gap-2">
+                        <button
+                          onClick={() => {
+                            setActiveMovie(movie);
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }}
+                          className="w-full bg-red-600 text-white text-xs py-1.5 rounded font-extrabold flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <Play className="w-3 h-3 fill-white" />
+                          <span>Stream Now</span>
+                        </button>
+                        <button
+                          onClick={() => setSelectingQualityMovie(movie)}
+                          className="w-full bg-neutral-800 text-white text-xs py-1.5 rounded flex items-center justify-center gap-1 cursor-pointer"
+                        >
+                          <Download className="w-3 h-3" />
+                          <span>Download</span>
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-3 gap-2">
-                      <button
-                        onClick={() => {
-                          setActiveMovie(movie);
-                          window.scrollTo({ top: 0, behavior: "smooth" });
-                        }}
-                        className="w-full bg-red-600 text-white text-xs py-1.5 rounded font-extrabold flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        <Play className="w-3 h-3 fill-white" />
-                        <span>Stream Now</span>
-                      </button>
-                      <button
-                        onClick={() => setSelectingQualityMovie(movie)}
-                        className="w-full bg-neutral-800 text-white text-xs py-1.5 rounded flex items-center justify-center gap-1 cursor-pointer"
-                      >
-                        <Download className="w-3 h-3" />
-                        <span>Download</span>
-                      </button>
+                    <div className="p-3.5 flex flex-col gap-1.5 flex-1">
+                      <h3 className="font-bold text-white text-xs md:text-sm line-clamp-1">{movie.title}</h3>
+                      <div className="flex justify-between items-center text-[10px] text-neutral-400">
+                        <span>{movie.year} • {movie.duration}</span>
+                        <span className="font-semibold text-neutral-500 uppercase">{movie.genre[0]}</span>
+                      </div>
+                      {movie.synopsisHindi && (
+                        <p className="text-[10px] text-neutral-500 line-clamp-2 mt-1 border-t border-white/5 pt-1">
+                          {movie.synopsisHindi}
+                        </p>
+                      )}
                     </div>
                   </div>
-
-                  <div className="p-3.5 flex flex-col gap-1.5 flex-1">
-                    <h3 className="font-bold text-white text-xs md:text-sm line-clamp-1">{movie.title}</h3>
-                    <div className="flex justify-between items-center text-[10px] text-neutral-400">
-                      <span>{movie.year} • {movie.duration}</span>
-                      <span className="font-semibold text-neutral-500 uppercase">{movie.genre[0]}</span>
-                    </div>
-                    {movie.synopsisHindi && (
-                      <p className="text-[10px] text-neutral-500 line-clamp-2 mt-1 border-t border-white/5 pt-1">
-                        {movie.synopsisHindi}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
 
-            {results.length === 0 && searchQuery && (
+            {!isSearching && results.length === 0 && searchQuery && (
               <div className="py-16 text-center text-neutral-500 flex flex-col items-center gap-4">
                 <HelpCircle className="w-12 h-12 text-red-700 animate-bounce" />
                 <p className="text-base text-neutral-400 max-w-sm">

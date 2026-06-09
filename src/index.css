@@ -1,1 +1,27 @@
 @import "tailwindcss";
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes shimmerFadeIn {
+  from {
+    opacity: 0.65;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-shimmer {
+  animation: shimmer 1.8s infinite linear;
+}
+
+.animate-shimmer-fade {
+  animation: shimmerFadeIn 0.35s ease-out forwards;
+}
