@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useEffect } from "react";
 import { 
   Tv, Sparkles, AlertTriangle, Monitor, Download, Play, Plus, Check, Star, 
@@ -28,30 +30,14 @@ export default function App() {
   // Player state
   const [activeMovie, setActiveMovie] = useState<Movie | null>(null);
   
+  // Hydration state
+  const [isClient, setIsClient] = useState(false);
+  
   // Watchlist (persisted in localStorage)
-  const [watchlist, setWatchlist] = useState<string[]>(() => {
-    const saved = localStorage.getItem("cinestream_watchlist");
-    return saved ? JSON.parse(saved) : ["stellar-voyage", "valley-quest"];
-  });
+  const [watchlist, setWatchlist] = useState<string[]>([]);
 
   // Downloads (persisted in localStorage)
-  const [downloadTasks, setDownloadTasks] = useState<DownloadTask[]>(() => {
-    const saved = localStorage.getItem("cinestream_download_tasks");
-    return saved ? JSON.parse(saved) : [
-      {
-        id: "dl-offline-1",
-        movieId: "stellar-voyage",
-        movieTitle: "The Stellar Voyage: Infinite Horizon",
-        posterUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
-        progress: 100,
-        status: "completed",
-        quality: "1080p (Full HD)",
-        size: "135 MB",
-        speed: "12.4 MB/s",
-        downloadUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4"
-      }
-    ];
-  });
+  const [downloadTasks, setDownloadTasks] = useState<DownloadTask[]>([]);
 
   // Quality selecting modal/state
   const [selectingQualityMovie, setSelectingQualityMovie] = useState<Movie | null>(null);
@@ -62,14 +48,52 @@ export default function App() {
 
   const t = TRANSLATIONS[language];
 
-  // Sync Watchlist & Downloads to localStorage
+  // Initialize and load state safe on Client Side
   useEffect(() => {
-    localStorage.setItem("cinestream_watchlist", JSON.stringify(watchlist));
-  }, [watchlist]);
+    setIsClient(true);
+    if (typeof window !== "undefined") {
+      const savedWatch = localStorage.getItem("cinestream_watchlist");
+      if (savedWatch) {
+        setWatchlist(JSON.parse(savedWatch));
+      } else {
+        setWatchlist(["stellar-voyage", "valley-quest"]);
+      }
+
+      const savedTasks = localStorage.getItem("cinestream_download_tasks");
+      if (savedTasks) {
+        setDownloadTasks(JSON.parse(savedTasks));
+      } else {
+        setDownloadTasks([
+          {
+            id: "dl-offline-1",
+            movieId: "stellar-voyage",
+            movieTitle: "The Stellar Voyage: Infinite Horizon",
+            posterUrl: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
+            progress: 100,
+            status: "completed",
+            quality: "1080p (Full HD)",
+            size: "135 MB",
+            speed: "12.4 MB/s",
+            downloadUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/TearsOfSteel.mp4"
+          }
+        ]);
+      }
+    }
+  }, []);
+
+  // Sync Watchlist & Downloads to localStorage only when loaded
+  useEffect(() => {
+    if (isClient) {
+      localStorage.setItem("cinestream_watchlist", JSON.stringify(watchlist));
+    }
+  }, [watchlist, isClient]);
 
   useEffect(() => {
-    localStorage.setItem("cinestream_download_tasks", JSON.stringify(downloadTasks));
-  }, [downloadTasks]);
+    if (isClient) {
+      localStorage.setItem("cinestream_download_tasks", JSON.stringify(downloadTasks));
+    }
+  }, [downloadTasks, isClient]);
+
 
   // Load catalog on startup
   useEffect(() => {

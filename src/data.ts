@@ -1,43 +1,4 @@
-import express from 'express';
-import fileSystem from 'fs';
-import path from 'path';
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { GoogleGenAI, Type } from "@google/genai";
-import http from 'http';
-import https from 'https';
-
-dotenv.config();
-
-// Safe setup for both ES Modules (Vite dev) and CommonJS (esbuild compiled start)
-let currentDirname = '';
-try {
-  currentDirname = path.dirname(fileURLToPath(import.meta.url));
-} catch (e) {
-  currentDirname = __dirname;
-}
-const myDirname = currentDirname;
-const app = express();
-app.use(express.json());
-
-const PORT = 3000;
-
-// Initialize Gemini Client
-const aiKey = process.env.GEMINI_API_KEY;
-let ai: GoogleGenAI | null = null;
-if (aiKey) {
-  ai = new GoogleGenAI({
-    apiKey: aiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      }
-    }
-  });
-}
-
-// 6 Best Quality Test Stream Files mapped to different profiles
-const STREAMS = {
+export const STREAMS = {
   Sintel: {
     "2160p": { url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4", size: "450 MB" },
     "1080p": { url: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/Sintel.mp4", size: "120 MB" },
@@ -58,7 +19,7 @@ const STREAMS = {
   }
 };
 
-const POSTERS = {
+export const POSTERS = {
   SciFi: "https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&w=800&q=80",
   Action: "https://images.unsplash.com/photo-1508739773434-c26b3d09e071?auto=format&fit=crop&w=800&q=80",
   Drama: "https://images.unsplash.com/photo-1518156677180-95a2893f3e9f?auto=format&fit=crop&w=800&q=80",
@@ -67,8 +28,7 @@ const POSTERS = {
   Fantasy: "https://images.unsplash.com/photo-1518709268805-4e9042af9f23?auto=format&fit=crop&w=800&q=80"
 };
 
-// Seed Local Catalog
-const CURATED_CATALOG = [
+export const CURATED_CATALOG = [
   {
     id: "stellar-voyage",
     title: "The Stellar Voyage: Infinite Horizon",
@@ -197,8 +157,7 @@ const CURATED_CATALOG = [
   }
 ];
 
-// Helper to select poster dynamically based on clean primary genre name
-function getPosterForGenre(genres: string[]): string {
+export function getPosterForGenre(genres: string[]): string {
   const primary = (genres[0] || "Generic").toLowerCase();
   if (primary.includes("sci") || primary.includes("space")) return POSTERS.SciFi;
   if (primary.includes("action") || primary.includes("fight")) return POSTERS.Action;
@@ -208,188 +167,3 @@ function getPosterForGenre(genres: string[]): string {
   if (primary.includes("fant") || primary.includes("anim")) return POSTERS.Fantasy;
   return POSTERS.Drama;
 }
-
-// REST endpoints
-app.get('/api/movies', async (req, res) => {
-  const query = req.query.q as string;
-  
-  if (!query) {
-    return res.json(CURATED_CATALOG);
-  }
-
-  // Filter existing curated catalogue if it fits well
-  const exactMatches = CURATED_CATALOG.filter(m => 
-    m.title.toLowerCase().includes(query.toLowerCase()) || 
-    m.genre.some(g => g.toLowerCase().includes(query.toLowerCase()))
-  );
-
-  // If there's an exact match in seeded catalog, return them
-  if (exactMatches.length > 0 && !ai) {
-    return res.json(exactMatches);
-  }
-
-  // If Gemini API is available, we perform a magical search details generator!
-  if (ai) {
-    try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3.5-flash",
-        contents: `You are an AI OTT Movie database assistant. The user wants to search for: "${query}". 
-        Generate details for 2 relevant movies matching this search query. 
-        If the movie is a well-known theatrical film (like "Pathaan", "Interstellar", "Inception", "Dangal", etc.), supply its real-world professional cinematic details.
-        Make sure to return structured details under the specified JSON schema.
-        We must have English synopsis and Hindi translation (synopsisHindi).
-        Choose a relevant genre list.`,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.ARRAY,
-            items: {
-              type: Type.OBJECT,
-              properties: {
-                title: { type: Type.STRING },
-                year: { type: Type.STRING },
-                rating: { type: Type.STRING, description: "IMDb rating e.g., 8.4" },
-                genre: { type: Type.ARRAY, items: { type: Type.STRING } },
-                duration: { type: Type.STRING, description: "e.g., 2h 15m" },
-                synopsis: { type: Type.STRING, description: "Fascinating English description of 3-4 lines" },
-                synopsisHindi: { type: Type.STRING, description: "Same description translated elegantly in Hindi" },
-                director: { type: Type.STRING },
-                cast: { type: Type.ARRAY, items: { type: Type.STRING } },
-                tagline: { type: Type.STRING, description: "Memorable cinematic catchphrase" }
-              },
-              required: ["title", "year", "rating", "genre", "duration", "synopsis", "synopsisHindi", "director", "cast", "tagline"]
-            }
-          }
-        }
-      });
-
-      const parsed = JSON.parse(response.text || "[]");
-      
-      // Inject Streaming Video Profiles & Posters for each generated movie
-      const resultMovies = parsed.map((item: any, idx: number) => {
-        // Mapped stream profile to keep things fully playable
-        const streamChoice = idx % 3 === 0 ? "Sintel" : (idx % 3 === 1 ? "TearsOfSteel" : "BigBuckBunny");
-        const genres = item.genre || ["Drama"];
-        const poster = getPosterForGenre(genres);
-        const movieId = `gen-${Date.now()}-${idx}-${item.title.toLowerCase().replace(/[^a-z0-9]/g, '-')}`;
-
-        return {
-          id: movieId,
-          title: item.title,
-          year: item.year || "2024",
-          rating: item.rating || "8.0",
-          genre: genres,
-          duration: item.duration || "2h 10m",
-          synopsis: item.synopsis,
-          synopsisHindi: item.synopsisHindi || "फिल्म की कहानी रोमांच और भावनाओं से भरी हुई है।",
-          director: item.director || "Director",
-          cast: item.cast || ["Lead Actor", "Supporting Actor"],
-          tagline: item.tagline || "Prepare to be amazed.",
-          videoUrl: STREAMS[streamChoice]["1080p"].url,
-          posterUrl: poster,
-          qualityOptions: [
-            { resolution: "1080p (Full HD)", fileUrl: STREAMS[streamChoice]["1080p"].url, size: STREAMS[streamChoice]["1080p"].size },
-            { resolution: "720p (HD)", fileUrl: STREAMS[streamChoice]["720p"].url, size: STREAMS[streamChoice]["720p"].size },
-            { resolution: "480p (SD)", fileUrl: STREAMS[streamChoice]["480p"].url, size: STREAMS[streamChoice]["480p"].size }
-          ]
-        };
-      });
-
-      return res.json([...resultMovies, ...exactMatches]);
-    } catch (e: any) {
-      console.error("Gemini query error, returning localized search fallback:", e);
-      // Fallback search
-      const fuse = CURATED_CATALOG.filter(m => 
-        m.title.toLowerCase().includes(query.toLowerCase()) || 
-        m.synopsis.toLowerCase().includes(query.toLowerCase()) ||
-        m.genre.some(g => g.toLowerCase().includes(query.toLowerCase()))
-      );
-      return res.json(fuse);
-    }
-  } else {
-    // Return standard fuzzy matches if API key not present
-    const fuse = CURATED_CATALOG.filter(m => 
-      m.title.toLowerCase().includes(query.toLowerCase()) || 
-      m.synopsis.toLowerCase().includes(query.toLowerCase()) ||
-      m.genre.some(g => g.toLowerCase().includes(query.toLowerCase()))
-    );
-    return res.json(fuse);
-  }
-});
-
-// Real Direct Proxy Downloader Endpoint
-// Resolves: "local storage download kar sake all in one quality ke sath download kar sake, aur us video ko kisi bhi local video player me play kar sake"
-app.get('/api/download', (req, res) => {
-  const urlParam = req.query.url as string;
-  const fileNameParam = req.query.fileName as string || "download-stream";
-  const quality = req.query.quality as string || "1080p";
-
-  if (!urlParam) {
-    return res.status(400).send("Parameter 'url' is required.");
-  }
-
-  const cleanFileName = `${fileNameParam.replace(/[^a-zA-Z0-9\s-_]/g, '')}_${quality}.mp4`;
-
-  // Determine whether to stream via http or https
-  const clientProtocol = urlParam.startsWith('https') ? https : http;
-
-  res.setHeader('Content-Disposition', `attachment; filename="${cleanFileName}"`);
-  res.setHeader('Content-Type', 'video/mp4');
-
-  const request = clientProtocol.get(urlParam, (response) => {
-    // Forward status code and content length if available
-    if (response.headers['content-length']) {
-      res.setHeader('Content-Length', response.headers['content-length']);
-    }
-    
-    // Pipe response stream directly to the Express client
-    response.pipe(res);
-  });
-
-  request.on('error', (e) => {
-    console.error("Error piping stream for download:", e);
-    res.status(500).send("Error generating file download stream.");
-  });
-});
-
-// Configure Vite integration or static file serving
-const isProd = process.env.NODE_ENV === 'production';
-
-async function bootstrap() {
-  if (!isProd) {
-    const { createServer: createViteServer } = await import('vite');
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: 'custom'
-    });
-    app.use(vite.middlewares);
-    
-    app.use('*', async (req, res, next) => {
-      const url = req.originalUrl;
-      try {
-        let template = fileSystem.readFileSync(
-          path.resolve(myDirname, 'index.html'),
-          'utf-8'
-        );
-        template = await vite.transformIndexHtml(url, template);
-        res.status(200).set({ 'Content-Type': 'text/html' }).end(template);
-      } catch (e) {
-        vite.ssrFixStacktrace(e as Error);
-        next(e);
-      }
-    });
-  } else {
-    app.use(express.static(path.resolve(myDirname, 'dist')));
-    app.get('*', (req, res) => {
-      res.sendFile(path.resolve(myDirname, 'dist/index.html'));
-    });
-  }
-
-  app.listen(PORT, () => {
-    console.log(`Cinemax server successfully listening on http://localhost:${PORT}`);
-  });
-}
-
-bootstrap().catch(err => {
-  console.error("Bootstrap server setup error:", err);
-});

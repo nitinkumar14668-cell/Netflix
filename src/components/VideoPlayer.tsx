@@ -199,7 +199,6 @@ export default function VideoPlayer({ movie, language, onClose }: VideoPlayerPro
           onLoadedMetadata={handleLoadedMetadata}
           onClick={togglePlay}
           preload="auto"
-          referrerPolicy="no-referrer"
         />
 
         {/* Cinematic Ambient Glow overlay in theater mode */}
